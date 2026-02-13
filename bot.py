@@ -17,6 +17,7 @@ CHECK_INTERVAL = 20  # Har minute (60 seconds)
 # Data storage
 user_markets: Dict[int, Set[str]] = {}  # {user_id: {market_addresses}}
 last_activity_ids: Dict[str, Set[str]] = {}  # {market_address: {activity_ids}}
+market_titles: Dict[str, str] = {}  # {market_address: "Market Title"}
 
 class YOSOTracker:
     def __init__(self):
@@ -50,6 +51,21 @@ class YOSOTracker:
             return response.json()
         except Exception as e:
             print(f"Error fetching activities for {market_address}: {e}")
+            return None
+
+    def get_market_title(self, market_address: str) -> str:
+        """Market page se title fetch karta hai"""
+        try:
+            url = f"https://app.yoso.fun/markets/{market_address}"
+            response = requests.get(url, headers=self.headers, timeout=10)
+            if response.status_code == 200:
+                match = re.search(r'<title>(.*?)</title>', response.text, re.IGNORECASE)
+                if match:
+                    title = match.group(1).strip()
+                    return title.replace(" | Yoso", "")
+            return None
+        except Exception as e:
+            print(f"Error fetching title for {market_address}: {e}")
             return None
 
     def format_amount(self, amount_usdc: str) -> str:
@@ -168,11 +184,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_markets[user_id].add(market_address)
         
         # Initialize last activity tracking
+        # Initialize last activity tracking
         if market_address not in last_activity_ids:
             last_activity_ids[market_address] = {act['id'] for act in data['activities']}
         
+        # Fetch and store market title
+        title = tracker.get_market_title(market_address)
+        market_name = title if title else market_address
+        market_titles[market_address] = market_name
+
         await update.message.reply_text(
             f"✅ **Market Successfully Added!**\n\n"
+            f"Market: **{market_name}**\n"
             f"Address: `{market_address}`\n\n"
             f"🔔 You will now receive notifications for trades in this market!\n"
             f"📊 Total tracked markets: {len(user_markets[user_id])}",
@@ -194,8 +217,8 @@ async def list_markets(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     message = "📊 **Your Tracked Markets:**\n\n"
     for idx, market in enumerate(user_markets[user_id], 1):
-        short_addr = market[:6] + "..." + market[-4:]
-        message += f"{idx}. `{short_addr}`\n"
+        market_name = market_titles.get(market, market[:6] + "..." + market[-4:])
+        message += f"{idx}. **{market_name}**\n"
         message += f"   [View Market](https://app.yoso.fun/markets/{market})\n\n"
     
     message += f"\n🔔 Total: {len(user_markets[user_id])} markets"
@@ -323,8 +346,9 @@ async def check_markets_once(application):
                             activity = current_activities[activity_id]
                             message = tracker.format_activity(activity)
                             
-                            short_market = market_address[:6] + "..." + market_address[-4:]
-                            final_message = f"🎯 Market: `{short_market}`\n{message}"
+                            
+                            market_name = market_titles.get(market_address, market_address[:6] + "..." + market_address[-4:])
+                            final_message = f"🎯 Market: **{market_name}**\n{message}"
                             
                             try:
                                 await application.bot.send_message(
