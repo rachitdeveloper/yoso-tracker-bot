@@ -12,7 +12,7 @@ import threading
 
 # Configuration
 TELEGRAM_BOT_TOKEN = "8152370701:AAHrmRqybN0h74JNnX_Kslu-QMLuFBncatc"  # Apna bot token yahan dale
-CHECK_INTERVAL = 60  # Har minute (60 seconds)
+CHECK_INTERVAL = 20  # Har minute (60 seconds)
 
 # Data storage
 user_markets: Dict[int, Set[str]] = {}  # {user_id: {market_addresses}}
