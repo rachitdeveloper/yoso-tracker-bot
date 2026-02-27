@@ -13,6 +13,11 @@ import threading
 # Configuration
 TELEGRAM_BOT_TOKEN = "8152370701:AAHrmRqybN0h74JNnX_Kslu-QMLuFBncatc"  # Apna bot token yahan dale
 CHECK_INTERVAL = 20  # Har minute (60 seconds)
+PROXY_URL = 'http://b80EdMP2FNF9ecn:D9GSAt4lryHF7sJ@82.41.251.44:43253'
+PROXIES = {
+    'http': PROXY_URL,
+    'https': PROXY_URL
+}
 
 # Data storage
 user_markets: Dict[int, Set[str]] = {}  # {user_id: {market_addresses}}
@@ -46,7 +51,7 @@ class YOSOTracker:
             headers = self.headers.copy()
             headers['Referer'] = f'https://app.yoso.fun/markets/{market_address}'
             
-            response = requests.get(url, headers=headers, params=params, timeout=10)
+            response = requests.get(url, headers=headers, params=params, proxies=PROXIES, timeout=10)
             response.raise_for_status()
             return response.json()
         except Exception as e:
@@ -57,7 +62,7 @@ class YOSOTracker:
         """Market page se title fetch karta hai"""
         try:
             url = f"https://app.yoso.fun/markets/{market_address}"
-            response = requests.get(url, headers=self.headers, timeout=10)
+            response = requests.get(url, headers=self.headers, proxies=PROXIES, timeout=10)
             if response.status_code == 200:
                 match = re.search(r'<title>(.*?)</title>', response.text, re.IGNORECASE)
                 if match:
